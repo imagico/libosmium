@@ -148,19 +148,6 @@ namespace osmium {
                 }
             }
 
-            void wait_and_pop_with_timeout(T& value) {
-                std::unique_lock<std::mutex> lock(m_mutex);
-                if (!m_data_available.wait_for(lock, std::chrono::seconds(1), [this] {
-                    return !m_queue.empty();
-                })) {
-                    return;
-                }
-                if (!m_queue.empty()) {
-                    value = std::move(m_queue.front());
-                    m_queue.pop();
-                }
-            }
-
             bool try_pop(T& value) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_queue.empty()) {
