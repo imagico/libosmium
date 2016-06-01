@@ -1504,8 +1504,9 @@ namespace osmium {
                 // just built, add them to a list and later build areas for
                 // them, too.
                 std::vector<const osmium::Way*> ways_that_should_be_areas;
+                const auto rel_tags_count = std::count_if(relation.tags().cbegin(), relation.tags().cend(), filter());
                 if (m_stats.wrong_role == 0) {
-                    detail::for_each_member(relation, members, [this, &ways_that_should_be_areas, &area_tags](const osmium::RelationMember& member, const osmium::Way& way) {
+                    detail::for_each_member(relation, members, [this, &ways_that_should_be_areas, &area_tags, rel_tags_count](const osmium::RelationMember& member, const osmium::Way& way) {
                         if (!std::strcmp(member.role(), "inner")) {
                             if (!way.nodes().empty() && way.is_closed() && way.tags().size() > 0) {
                                 const auto d = std::count_if(way.tags().cbegin(), way.tags().cend(), filter());
@@ -1523,6 +1524,24 @@ namespace osmium {
                                             m_config.problem_reporter->report_inner_with_same_tags(way);
                                         }
                                     }
+                                }
+                            }
+                        }
+
+                        if (!std::strcmp(member.role(), "outer") && (rel_tags_count != 0)) {
+                            if (!way.nodes().empty() && way.is_closed() && way.tags().size() > 0) {
+
+                                // ideally tags that are already on the relation should be removed from the way
+                                // but i am not sure how to properly construct a new way with modified tags here
+                                int unique_tags = 0;
+                                for (const auto& tag : way.tags()) {
+                                    if (filter()(tag))
+                                        if (!area_tags.has_tag(tag.key(), tag.value()))
+                                            unique_tags++;
+                                }
+
+                                if (unique_tags > 0) {
+                                    ways_that_should_be_areas.push_back(&way);
                                 }
                             }
                         }
